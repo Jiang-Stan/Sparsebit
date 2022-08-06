@@ -37,3 +37,19 @@ class Flatten(nn.Module):
         """Flatten层的前向传播,不做量化。"""
         out = torch.flatten(x_in, self.start_dim, self.end_dim)
         return out
+
+@register_qmodule(sources=[torch.cat])
+class Concat(nn.Module):
+    def __init__(self, org_module=None, config=None):
+        super().__init__()
+        if "dim" in org_module.kwargs:
+            self.dim = org_module.kwargs["dim"]
+        elif len(org_module.args) == 2:
+            self.dim = org_module.args[1]
+        else:
+            self.dim = None
+        self._repr_info = "Concat"
+
+    def forward(self, x_in, *args, **kwargs):
+        out = torch.cat(x_in, dim=self.dim)
+        return out

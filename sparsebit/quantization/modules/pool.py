@@ -56,3 +56,42 @@ class QAdaptiveAvgPool2d(QuantOpr):
         x_in = self.input_quantizer(x_in)
         out = F.adaptive_avg_pool2d(x_in, self.output_size)
         return out
+
+@register_qmodule(sources=[F.interpolate, nn.Upsample])
+class Interpolate(QuantOpr):
+    """量化Interpolate层。
+
+    是QuantOpr的子类。
+
+    Attributes:
+        input_quantizer (sparsebit.quantization.quantizers.base.Quantizer):
+            输入量化器。
+        size (any): 同 ``torch.nn.functional.interpolate`` 。
+        scale_factor (any): 同 ``torch.nn.functional.interpolate`` 。
+        mode (any): 同 ``torch.nn.functional.interpolate`` 。
+        align_corners (any): 同 ``torch.nn.functional.interpolate`` 。
+        recompute_scale_factor (any): 同 ``torch.nn.functional.interpolate`` 。
+    """
+
+    def __init__(self, org_module=None, config=None):
+        super(Interpolate, self).__init__()
+        if isinstance(org_module, nn.Module):
+            self.size = org_module.size
+            self.scale_factor = org_module.scale_factor
+            self.mode = org_module.mode
+            self.align_corners = org_module.align_corners
+            self.recompute_scale_factor = None
+        else:
+            self.size = org_module.kwargs["size"]
+            self.scale_factor = org_module.kwargs["scale_factor"]
+            self.mode = org_module.kwargs["mode"]
+            self.align_corners = org_module.kwargs["align_corners"]
+            self.recompute_scale_factor = org_module.kwargs["recompute_scale_factor"]
+        self._repr_info = "Q" + org_module.__repr__()
+
+    def forward(self, x_in, *args, **kwargs):
+        """Interpolate层的前向传播,但加入了input量化。"""
+        x_in = self.input_quantizer(x_in)
+        out = F.interpolate(x_in, self.size, self.scale_factor, self.mode, self.align_corners, recompute_scale_factor=self.recompute_scale_factor)
+
+        return out
