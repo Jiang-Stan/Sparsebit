@@ -26,12 +26,3 @@ class QIdentity(QuantOpr):
 
     def forward(self, x_in):
         return x_in
-
-@register_qmodule(sources=[operator.getitem])
-class GetItem(QuantOpr):
-    def __init__(self, org_module=None, config=None):
-        super(GetItem, self).__init__()
-        self._repr_info = "GetItem"
-
-    def forward(self, x_in, index):
-        return x_in[index]

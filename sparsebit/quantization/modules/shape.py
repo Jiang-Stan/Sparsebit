@@ -53,3 +53,12 @@ class Concat(nn.Module):
     def forward(self, x_in, *args, **kwargs):
         out = torch.cat(x_in, dim=self.dim)
         return out
+
+@register_qmodule(sources=[operator.getitem])
+class GetItem(nn.Module):
+    def __init__(self, org_module=None, config=None):
+        super(GetItem, self).__init__()
+        self._repr_info = "GetItem"
+
+    def forward(self, x_in, index):
+        return x_in[index]

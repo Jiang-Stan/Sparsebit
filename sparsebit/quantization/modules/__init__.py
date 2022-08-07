@@ -30,4 +30,6 @@ PASSTHROUGHT_MODULES = (
     QMaxPool2d,
     QBatchNorm2d,
     QIdentity,
+    GetItem,
+    Concat,
 )
