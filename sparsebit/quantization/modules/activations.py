@@ -49,11 +49,13 @@ class QReLU6(QuantOpr):
         self._repr_info = "Q" + org_module.__repr__()
         if isinstance(org_module, nn.Module):
             inplace = org_module.inplace
-        else:
+        elif len(org_module.args)>1:
             inplace = org_module.args[1]
+        else:
+            inplace = org_module.kwargs["inplace"]
         self.clamp = torch.clamp_ if inplace else torch.clamp
 
-    def forward(self, x_in):
+    def forward(self, x_in, *args, **kwargs):
         """ReLU6层的前向传播,但加入了input量化。"""
         x_in = self.input_quantizer(x_in)
         out = self.clamp(x_in, min=0, max=6)
