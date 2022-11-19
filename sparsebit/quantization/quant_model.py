@@ -142,11 +142,6 @@ class QuantModel(nn.Module):
         self.model = fuse_operations(self.model, self.cfg.SCHEDULE)
         self.model.graph.print_tabular()
 
-    def run_output_fusion(self):
-        update_config(self.cfg.SCHEDULE, "FUSE_OUTPUT_QUANTIZER", True)
-        self.model = fuse_operations(self.model, self.cfg.SCHEDULE, ["fuse_output_quantizer"])
-        self.model.graph.print_tabular()
-
     @contextmanager
     def batchnorm_tuning(self):
         """
