@@ -21,6 +21,7 @@ from sparsebit.quantization.quantizers import Quantizer
 from sparsebit.quantization.tools import QuantizationErrorProfiler
 from sparsebit.quantization.converters import simplify, fuse_operations
 from sparsebit.quantization.quant_tracer import QTracer
+from sparsebit.quantization.regularizers import build_regularizer
 
 
 __all__ = ["QuantModel"]
@@ -35,6 +36,7 @@ class QuantModel(nn.Module):
         self._run_simplifiers()
         self._convert2quantmodule()
         self._build_quantizer()
+        self._build_regularizer()
         self._run_fuse_operations()
 
     def _convert2quantmodule(self):
@@ -133,6 +135,13 @@ class QuantModel(nn.Module):
         traced.graph.print_tabular()
         return traced
 
+    def _build_regularizer(self):
+        if self.cfg.REGULARIZER.ENABLE:
+            self.regularizer = build_regularizer(self.cfg)
+        else:
+            self.regularizer = None
+
+
     def _run_simplifiers(self):
         self.model = simplify(self.model)
 
@@ -223,6 +232,12 @@ class QuantModel(nn.Module):
         for n, m in self.model.named_modules():
             if isinstance(m, QuantOpr):
                 m.set_quant(w_quant, a_quant)
+
+    def get_regularizer_loss(self):
+        if self.regularizer is None:
+            return torch.tensor(0.).to(self.device)
+        else:
+            return self.regularizer(self.model)
 
     def export_onnx(
         self,

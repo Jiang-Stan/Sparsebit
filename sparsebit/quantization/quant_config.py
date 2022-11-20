@@ -39,6 +39,11 @@ _C.A.OBSERVER.MOVING_AVERAGE.EMA_RATIO = 0.9  # ema_ratio for moving_average obs
 _C.A.OBSERVER.LAYOUT = "NCHW"  # NCHW / NLC
 _C.A.SPECIFIC = []
 
+_C.REGULARIZER = CN()
+_C.REGULARIZER.ENABLE = False
+_C.REGULARIZER.TYPE = ""
+_C.REGULARIZER.LAMBDA = 0.0
+
 
 def parse_qconfig(cfg_file):
     qconfig = _parse_config(cfg_file, default_cfg=_C)
