@@ -289,7 +289,7 @@ class QuantModel(nn.Module):
 
     def add_extra_info_to_onnx(self, onnx_path):
         onnx_model = onnx.load(onnx_path)
-        extra_onnx_path = onnx_path.replace(".onnx", "_extra.onnx")
+        extra_onnx_path = onnx_path
         tensor_inputs = {}
         tensor_outputs = {}
         nodes = {}
@@ -309,7 +309,8 @@ class QuantModel(nn.Module):
         for name, module in self.model.named_modules():
             if (
                 module == self.model
-                or isinstance(module, (Observer, Quantizer, Clone))
+                or isinstance(module, (Observer, Quantizer, Size, QGetItem))
+                or (isinstance(module, Concat) and module.dim == 0)
                 or module in skipped_modules
             ):
                 continue
@@ -318,9 +319,27 @@ class QuantModel(nn.Module):
                     if not isinstance(submodule, QuantOpr):
                         skipped_modules.add(submodule)
 
+            if isinstance(module, QIdentity):
+                input_quant = onnx_model.graph.node[op_pos]
+                input_dequant = onnx_model.graph.node[op_pos+1]
+                assert input_quant.op_type == "QuantizeLinear", "No QuantLinear node founded!"
+                assert input_dequant.op_type == "DequantizeLinear", "No DequantizeLinear node founded!"
+                input_dequant.attribute.append(
+                    onnx.helper.make_attribute("bits", module.input_quantizer.bit)
+                )
+                input_quant.attribute.append(
+                    onnx.helper.make_attribute("bits", module.input_quantizer.bit)
+                )
+                op_pos += 2
+                continue
+
             while op_pos < len(onnx_model.graph.node) and (
                 onnx_model.graph.node[op_pos].op_type
-                in ["QuantizeLinear", "DequantizeLinear", "Constant"]
+                in ["QuantizeLinear", "DequantizeLinear", "Constant", "Slice", "Shape", "Gather", "Unsqueeze", "Cast"]
+                or (
+                    onnx_model.graph.node[op_pos].op_type in ["Concat"] #hack for interpolate shape concat
+                    and onnx_model.graph.node[op_pos].attribute[0].i == 0
+                )
             ):
                 op_pos += 1
             onnx_op = onnx_model.graph.node[op_pos]
@@ -329,20 +348,30 @@ class QuantModel(nn.Module):
             if isinstance(module, QuantOpr) and getattr(
                 module.input_quantizer, "is_enable", False
             ):
-                input_dequant = nodes[tensor_inputs[onnx_op.input[0]][0]]
-                input_quant = nodes[tensor_inputs[input_dequant.input[0]][0]]
-                input_dequant.attribute.append(
-                    onnx.helper.make_attribute("bits", module.input_quantizer.bit)
-                )
-                input_quant.attribute.append(
-                    onnx.helper.make_attribute("bits", module.input_quantizer.bit)
-                )
+                if isinstance(module, (QAdd, Concat)):
+                    input_quant_len = len(onnx_op.input)
+                else:
+                    input_quant_len = 1
+
+                for i in range(input_quant_len):
+                    input_dequant = nodes[tensor_inputs[onnx_op.input[i]][0]]
+                    input_quant = nodes[tensor_inputs[input_dequant.input[0]][0]]
+                    assert input_quant.op_type == "QuantizeLinear", "No QuantLinear node founded!"
+                    assert input_dequant.op_type == "DequantizeLinear", "No DequantizeLinear node founded!"
+                    input_dequant.attribute.append(
+                        onnx.helper.make_attribute("bits", module.input_quantizer.bit)
+                    )
+                    input_quant.attribute.append(
+                        onnx.helper.make_attribute("bits", module.input_quantizer.bit)
+                    )
 
             if isinstance(module, QuantOpr) and getattr(
                 module.weight_quantizer, "is_enable", False
             ):
                 weight_dequant = nodes[tensor_inputs[onnx_op.input[1]][0]]
                 weight_quant = nodes[tensor_inputs[weight_dequant.input[0]][0]]
+                assert weight_quant.op_type == "QuantizeLinear", "No QuantLinear node founded!"
+                assert weight_dequant.op_type == "DequantizeLinear", "No DequantizeLinear node founded!"
                 weight_dequant.attribute.append(
                     onnx.helper.make_attribute("bits", module.weight_quantizer.bit)
                 )
