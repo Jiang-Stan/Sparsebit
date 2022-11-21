@@ -54,7 +54,6 @@ class QReLU6(QuantOpr):
         else:
             inplace = org_module.kwargs["inplace"]
         self.clamp = torch.clamp_ if inplace else torch.clamp
-        self.set_fake_fused()
 
     def forward(self, x_in, *args, **kwargs):
         """ReLU6层的前向传播,但加入了input量化。"""
