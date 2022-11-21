@@ -19,7 +19,7 @@ from sparsebit.quantization.modules import *
 from sparsebit.quantization.observers import Observer
 from sparsebit.quantization.quantizers import Quantizer
 from sparsebit.quantization.tools import QuantizationErrorProfiler
-from sparsebit.quantization.converters import simplify, fuse_operations
+from sparsebit.quantization.converters import simplify, fuse_operations, onnx_modifications
 from sparsebit.quantization.quant_tracer import QTracer
 from sparsebit.quantization.regularizers import build_regularizer
 
@@ -276,8 +276,16 @@ class QuantModel(nn.Module):
             if isinstance(m, Quantizer):
                 m.disable_export_onnx()
 
+        #Onnx fold constant first, Almost same to graphsurgeon.fold_constant but won't fold QDQ
+        self.modify_onnx(name, ["fold_constant"])
+
         if extra_info:
             self.add_extra_info_to_onnx(name)
+
+    def modify_onnx(self, onnx_path, modification_list = None):
+        onnx_model = onnx.load(onnx_path)
+        onnx_model = onnx_modifications(onnx_model, modification_list)
+        onnx.save(onnx_model, onnx_path)
 
     def add_extra_info_to_onnx(self, onnx_path):
         onnx_model = onnx.load(onnx_path)
