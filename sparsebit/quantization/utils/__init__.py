@@ -1,5 +1,4 @@
 import torch
-from sparsebit.quantization.quant_tracer import QTracer
 
 
 def fx_symbolic_trace(model):
