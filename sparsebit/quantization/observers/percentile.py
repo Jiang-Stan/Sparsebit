@@ -15,12 +15,14 @@ class Observer(BaseObserver):
 
     def calc_minmax(self):
 
-        if self.is_perchannel:
+        if self.granularity == Granularity.CHANNELWISE:
             data = self.data_cache.get_data_for_calibration(Granularity.CHANNELWISE)
-        else:
+        elif self.granularity == Granularity.LAYERWISE:
             data = self.data_cache.get_data_for_calibration(
                 Granularity.LAYERWISE
             ).reshape(1, -1)
+        else:
+            raise NotImplementedError
         self.data_cache.reset()
         channel = data.shape[0]
 

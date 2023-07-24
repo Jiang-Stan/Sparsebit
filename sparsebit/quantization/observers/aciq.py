@@ -63,12 +63,14 @@ class Observer(BaseObserver):
         self.gaus_const = (0.5 * 0.35) * (1 + (math.pi * math.log(4)) ** 0.5)
 
     def calc_laplace_minmax(self):
-        if self.is_perchannel:
+        if self.granularity==Granularity.CHANNELWISE:
             data = self.data_cache.get_data_for_calibration(Granularity.CHANNELWISE)
             b = torch.mean(torch.abs(data - data.mean(1).unsqueeze(1)), dim=1)
-        else:
+        if self.granularity==Granularity.LAYERWISE:
             data = self.data_cache.get_data_for_calibration(Granularity.LAYERWISE)
             b = torch.mean(torch.abs(data - data.mean()))
+        else:
+            raise NotImplementedError
         self.data_cache.reset()
         is_half_range = data.min() >= 0
         if (
@@ -85,15 +87,17 @@ class Observer(BaseObserver):
     def calc_gaus_minmax(self):
         if self.qdesc.target == QuantTarget.FEATURE:
             batch_size = self.data_cache.get_batch_size()
-        if self.is_perchannel:
+        if self.granularity == Granularity.CHANNELWISE:
             data = self.data_cache.get_data_for_calibration(Granularity.CHANNELWISE)
             max_val = data.max(axis=1).values
             min_val = data.min(axis=1).values
-        else:
+        elif Granularity.LAYERWISE:
             data = self.data_cache.get_data_for_calibration(Granularity.LAYERWISE)
             max_val = data.max()
             min_val = data.min()
             self.data_cache.get_batch_size
+        else:
+            raise NotImplementedError
         self.data_cache.reset()
         is_half_range = data.min() >= 0
         num_elements = data.numel()

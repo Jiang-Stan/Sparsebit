@@ -2,7 +2,7 @@ import os
 import numpy as np
 import torch
 import torch.nn as nn
-from sparsebit.quantization.common import Backend
+from sparsebit.quantization.common import Backend, Granularity
 
 if torch.cuda.is_available():
     from torch.utils.cpp_extension import load
@@ -87,7 +87,7 @@ class STE(torch.autograd.Function):
         if torch.cuda.is_available():
             if x.dtype == torch.float16:  # A workaround
                 x = x.float()
-            if qdesc.is_perchannel:
+            if qdesc.granularity == Granularity.CHANNELWISE:
                 gx, gs, gzp = fake_quant_kernel.quant_perchannel_backward(
                     x.contiguous(),
                     scale.contiguous(),
@@ -98,7 +98,7 @@ class STE(torch.autograd.Function):
                     qdesc.ch_axis,
                     0,
                 )
-            else:
+            elif qdesc.granularity == Granularity.LAYERWISE:
                 gx, gs, gzp = fake_quant_kernel.quant_pertensor_backward(
                     x.contiguous(),
                     scale,
@@ -108,6 +108,8 @@ class STE(torch.autograd.Function):
                     qmax,
                     0,
                 )
+            else:
+                raise NotImplementedError
             gs = gs if scale.requires_grad else None
             gzp = gzp if zero_point.requires_grad else None
         else:
@@ -136,7 +138,7 @@ def trt_fake_quant(x_f, scale, zero_point, qdesc):
     if torch.cuda.is_available() and "cuda" in x_f.device.type:
         if x_f.dtype == torch.float16:  # A workaround
             x_f = x_f.float()
-        if qdesc.is_perchannel:
+        if qdesc.granularity == Granularity.CHANNELWISE:
             x_dq = fake_quant_kernel.quant_perchannel_forward(
                 x_f.contiguous(),
                 scale.contiguous(),
@@ -146,10 +148,12 @@ def trt_fake_quant(x_f, scale, zero_point, qdesc):
                 qdesc.ch_axis,
                 0,
             )
-        else:
+        elif qdesc.granularity == Granularity.LAYERWISE:
             x_dq = fake_quant_kernel.quant_pertensor_forward(
                 x_f.contiguous(), scale, zero_point, qmin, qmax, 0
             )
+        else:
+            raise NotImplementedError
     else:
         x_q = torch.clamp((x_f / scale).round(), qmin, qmax)
         x_dq = x_q * scale
@@ -164,7 +168,7 @@ def ort_fake_quant(x_f, scale, zero_point, qdesc):
     if torch.cuda.is_available() and "cuda" in x_f.device.type:
         if x_f.dtype == torch.float16:  # A workaround
             x_f = x_f.float()
-        if qdesc.is_perchannel:
+        if qdesc.granularity == Granularity.CHANNELWISE:
             x_dq = fake_quant_kernel.quant_perchannel_forward(
                 x_f.contiguous(),
                 scale.contiguous(),
@@ -174,10 +178,12 @@ def ort_fake_quant(x_f, scale, zero_point, qdesc):
                 qdesc.ch_axis,
                 0,
             )
-        else:
+        elif qdesc.granularity == Granularity.LAYERWISE:
             x_dq = fake_quant_kernel.quant_pertensor_forward(
                 x_f.contiguous(), scale, zero_point, qmin, qmax, 0
             )
+        else:
+            raise NotImplementedError
     else:
         zp = zero_point.round()
         x_q = torch.clamp((x_f / scale).round() + zp, qmin, qmax)

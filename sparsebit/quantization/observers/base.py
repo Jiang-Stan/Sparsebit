@@ -23,13 +23,17 @@ class DataCache(object):
         assert granularity in [
             Granularity.LAYERWISE,
             Granularity.CHANNELWISE,
-        ], "only layerwise or channelwise quantization are supported now!"
+            Granularity.GROUPWISE,
+        ], "only layerwise, channelwise or groupwise quantization are supported now!"
         if granularity == Granularity.CHANNELWISE:
             data = torch.cat(self._data_cache, dim=self.qdesc.ch_axis)
             if self.qdesc.ch_axis != 0:
                 data = data.transpose(0, self.qdesc.ch_axis)
             data = data.flatten(1)
         elif granularity == Granularity.LAYERWISE:
+            data = torch.cat([d.reshape(-1) for d in self._data_cache], axis=0)
+        elif granularity == Granularity.GROUPWISE:
+            raise NotImplementedError
             data = torch.cat([d.reshape(-1) for d in self._data_cache], axis=0)
         else:
             raise NotImplementedError
@@ -79,9 +83,13 @@ class Observer(nn.Module):
         return scale, zero_point
 
     @property
-    def is_perchannel(self):
-        return self.qdesc.is_perchannel
+    def granularity(self):
+        return self.qdesc.granularity
 
     @property
     def is_symmetric(self):
         return self.qdesc.is_symmetric
+
+    @property
+    def group_size(self):
+        return self.qdesc.group_size

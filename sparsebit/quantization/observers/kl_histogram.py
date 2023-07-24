@@ -102,7 +102,7 @@ class Observer(BaseObserver):
         self.bins = 2048
 
     def calc_minmax(self):
-        if self.is_perchannel:
+        if self.granularity == Granularity.CHANNELWISE:
             data = self.data_cache.get_data_for_calibration(
                 Granularity.CHANNELWISE
             ).cpu()
@@ -131,7 +131,7 @@ class Observer(BaseObserver):
                 _max[c] = th[c]
             self.max_val = _max.to(self.device)
             self.min_val = _min.to(self.device)
-        else:
+        elif self.granularity == Granularity.LAYERWISE:
             data = self.data_cache.get_data_for_calibration(Granularity.LAYERWISE).cpu()
             abs_max = data.abs().max()
             th = get_best_threshold(
@@ -147,5 +147,7 @@ class Observer(BaseObserver):
                 if data.min() < 0
                 else torch.zeros(1).to(self.device)
             )
+        else:
+            raise NotImplementedError
         self.data_cache.reset()
         return self.min_val, self.max_val
