@@ -51,10 +51,6 @@ class Observer(BaseObserver):
             cur_min_val = min_val * (1.0 - (i * 0.01))
             cur_max_val = max_val * (1.0 - (i * 0.01))
             scale, zero_point = self.calc_qparams_with_minmax(cur_min_val, cur_max_val)
-            dst_shape = [1] * x_f.dims
-            dst_shape[self.qdesc.ch_axis] = -1
-            scale = scale.reshape(dst_shape)
-            zero_point = zero_point.reshape(dst_shape)
             x_dq = STE.apply(x_f, scale, zero_point, self.qdesc, Backend.VIRTUAL)
             loss = mse_loss(x_f, x_dq, self.granularity)
             if self.granularity in [Granularity.CHANNELWISE, Granularity.GROUPWISE]:

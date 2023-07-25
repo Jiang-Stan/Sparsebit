@@ -189,7 +189,7 @@ def ort_fake_quant(x_f, scale, zero_point, qdesc):
             else:
                 grouped_shape = torch.Size([scale.numel(), -1])
             scale = scale.reshape(grouped_shape)
-            zp = zp.reshape(grouped_shape)
+            zero_point = zero_point.reshape(grouped_shape)
             x_f = x_f.reshape(grouped_shape)
 
             x_dq = fake_quant_kernel.quant_perchannel_forward(
@@ -221,11 +221,7 @@ def ort_fake_quant(x_f, scale, zero_point, qdesc):
 
         else:
             zp = zero_point.round()
-            try:
-                x_q = torch.clamp((x_f / scale).round() + zp, qmin, qmax)
-            except:
-                import ipdb
-                ipdb.set_trace()
+            x_q = torch.clamp((x_f / scale).round() + zp, qmin, qmax)
             x_dq = (x_q - zp) * scale
     return x_dq
 
