@@ -68,6 +68,9 @@ class QuantDescriptor:
         self._bit = bit
         self._qmin, self._qmax, self._type = self.calc_qmin_qmax(bit, self._scheme)
 
+    def set_group_size(self, group_size):
+        self._group_size = group_size
+
     def set_symmetric(self, is_symmetric: bool):
         self.is_symmetric = is_symmetric
         self._scheme = {
