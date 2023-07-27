@@ -184,10 +184,7 @@ def ort_fake_quant(x_f, scale, zero_point, qdesc):
             )
         elif qdesc.granularity == Granularity.GROUPWISE:
             origin_shape = x_f.shape
-            if qdesc.target == QuantTarget.FEATURE:
-                grouped_shape = torch.Size([x_f.shape[0], scale.numel(), -1])
-            else:
-                grouped_shape = torch.Size([scale.numel(), -1])
+            grouped_shape = torch.Size([scale.numel(), -1])
             scale = scale.reshape(grouped_shape)
             zero_point = zero_point.reshape(grouped_shape)
             x_f = x_f.reshape(grouped_shape)
@@ -198,7 +195,7 @@ def ort_fake_quant(x_f, scale, zero_point, qdesc):
                 zero_point.contiguous(),
                 qmin,
                 qmax,
-                qdesc.ch_axis,
+                0,
                 0,
             )
             x_dq = x_dq.reshape(origin_shape)
