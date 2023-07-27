@@ -140,7 +140,7 @@ class QSiLU(QuantOpr):
 
     def forward(self, x_in):
         """SiLU层的前向传播,但加入了input量化。"""
-        x_in = self.input_quantizer(x_in)
+        # x_in = self.input_quantizer(x_in)
         out = F.silu(x_in, inplace=self.inplace)
         return out
 

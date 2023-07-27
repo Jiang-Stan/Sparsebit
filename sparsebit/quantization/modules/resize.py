@@ -24,7 +24,7 @@ class QUpsample(QuantOpr):
             self.input_quantizer.set_bit(bit=8)
 
     def forward(self, x_in, *args):
-        x_in = self.input_quantizer(x_in)
+        # x_in = self.input_quantizer(x_in)
         out = F.interpolate(x_in, scale_factor=self.scale_factor, mode=self.mode)
         return out
 
