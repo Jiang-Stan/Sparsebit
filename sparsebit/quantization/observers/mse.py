@@ -28,7 +28,9 @@ class Observer(BaseObserver):
         return self.min_val, self.max_val
 
     def calc_qparams(self):
-        data_c_first = self.data_cache.get_data_for_calibration(self.granularity)
+        data_c_first, perm = self.data_cache.get_data_for_calibration(self.granularity, reorder=True)
+        self.perm = perm
+        self.inv_perm = torch.argsort(perm)
         self.data_cache.reset()
         min_val, max_val = self.calc_minmax(data_c_first)
         x_f = data_c_first.to(self.device)

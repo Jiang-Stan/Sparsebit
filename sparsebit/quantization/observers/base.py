@@ -21,7 +21,7 @@ class DataCache(object):
     def __len__(self):
         return len(self._data_cache)
 
-    def get_data_for_calibration(self, granularity: Granularity):
+    def get_data_for_calibration(self, granularity: Granularity, reorder=False):
         assert len(self._data_cache), "No data cached!"
         assert granularity in [
             Granularity.LAYERWISE,
@@ -42,9 +42,20 @@ class DataCache(object):
             else: #weight group on ic dim
                 assert self._data_cache[0].shape[1] <= self.group_size or self._data_cache[0].shape[1] % self.group_size == 0, "group size must be divided by ic num! got {} and {} instead".format(self.group_size, self._data_cache[0].shape[1])
                 group_num = max(self._data_cache[0].shape[1] // self.group_size, 1)
-                if group_num == 1:
-                    self.qdesc.set_group_size = self._data_cache[0].shape[1]
-                data = torch.cat([d.reshape(d.shape[0]*group_num, -1) for d in self._data_cache], axis=1)
+                if reorder:
+                    weight = self._data_cache[0]
+                    oc, ic, _, _ = weight.shape
+                    
+                    data_c_first = weight.transpose(1,0).reshape(ic, -1)
+                    kernel_abs_max = data_c_first.max(axis=-1)[0]   #(oc, ic)
+                    perm = torch.argsort(kernel_abs_max, descending=True)
+                    weight = weight[:,perm]
+                    data_c_first = weight.reshape(oc*group_num, -1)
+                    return data_c_first, perm
+                else:
+                    if group_num == 1:
+                        self.qdesc.set_group_size = self._data_cache[0].shape[1]
+                    data = torch.cat([d.reshape(d.shape[0]*group_num, -1) for d in self._data_cache], axis=1)
         return data
 
     def get_batch_size(self):
